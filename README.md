@@ -35,15 +35,29 @@ Para incentivar o hábito da leitura, o bot conta com um sistema de recompensas 
 
 ---
 
+## 📦 Tecnologias & Stack Técnica
+
+O ecossistema do projeto foi construído utilizando o ecossistema robusto do **Python 3.x** e as principais bibliotecas de Ciência de Dados e Processamento de Linguagem Natural (NLP) do mercado:
+
+| Tecnologia / Lib | Badge | Função no Projeto |
+| :--- | :---: | :--- |
+| **Python 3.x** | ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) | Linguagem base de todo o ecossistema do assistente. |
+| **python-telegram-bot** | ![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white) | Conexão, roteamento de comandos e interface conversacional. |
+| **scikit-learn** | ![scikit-learn](https://img.shields.io/badge/scikit--learn-%23F7931E.svg?style=for-the-badge&logo=scikit-learn&logoColor=white) | Criação de vetores numéricos via **TF-IDF** e **Similaridade de Cossenos**. |
+| **NLTK** | ![NLTK](https://img.shields.io/badge/NLTK-Green?style=for-the-badge&logo=python&logoColor=white) | Processamento de NLP: *Tokenização* de sentenças e aplicação do *Stemmer*. |
+| **Wikipedia-API** | ![Wikipedia](https://img.shields.io/badge/Wikipedia-%23000000.svg?style=for-the-badge&logo=wikipedia&logoColor=white) | Mecanismo de *Web Scraping* dinâmico para extração de dados dos livros. |
+| **python-dotenv** | ![Dotenv](https://img.shields.io/badge/.ENV-Black?style=for-the-badge) | Gerenciamento seguro de variáveis de ambiente e proteção do Token. |
+| **TextBlob & LangDetect** | ![IA](https://img.shields.io/badge/AI--Sentiment-8A2BE2?style=for-the-badge) | Detecção de idioma e classificação do sentimento (Humor do usuário). |
+
 ## 🛠️ Arquitetura do Projeto
 
 O projeto segue boas práticas de engenharia de software e os princípios do **SOLID**, sendo totalmente modularizado para facilitar a manutenção e escalabilidade:
 
 ```text
-meu_bot_literario/
+Chatbot_literario/
 │
 ├── src/
-│   ├── __init__.py        # Inicializador do módulo
+│   ├── __init__.py        # Inicializador do módulo Python
 │   ├── bot_telegram.py    # Interface conversacional e handlers do Telegram
 │   ├── nlp_engine.py      # Mecanismo de Scraping, TF-IDF e Similaridade de Cossenos
 │   ├── sentiment.py       # Análise de sentimento e adequação ao humor do cliente
@@ -53,17 +67,3 @@ meu_bot_literario/
 ├── .gitignore             # Filtro para não expor a venv e chaves no GitHub
 ├── main.py                # Ponto de entrada (Bootstrapper da aplicação)
 └── requirements.txt       # Gerenciador de dependências do projeto
-
-## 📦 Tecnologias & Stack Técnica
-
-O ecossistema do projeto foi construído utilizando o ecossistema robusto do **Python 3.x** e as principais bibliotecas de Ciência de Dados e Processamento de Linguagem Natural (NLP) do mercado:
-
-| Tecnologia / Lib | Badge | Função no Projeto |
-| :--- | :--- | :--- |
-| **Python 3.x** | ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) | Linguagem base de todo o ecossistema do assistente. |
-| **python-telegram-bot** | ![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white) | Conexão, roteamento de comandos e interface conversacional (GUI). |
-| **scikit-learn** | ![scikit-learn](https://img.shields.io/badge/scikit--learn-%23F7931E.svg?style=for-the-badge&logo=scikit-learn&logoColor=white) | Criação de vetores numéricos estatísticos via **TF-IDF** e cálculo de **Similaridade de Cossenos**. |
-| **NLTK** | ![NLTK](https://img.shields.io/badge/NLTK-Green?style=for-the-badge&logo=python&logoColor=white) | Processamento de Linguagem Natural: *Tokenização* de sentenças e aplicação do *Stemmer*. |
-| **Wikipedia-API** | ![Wikipedia](https://img.shields.io/badge/Wikipedia-%23000000.svg?style=for-the-badge&logo=wikipedia&logoColor=white) | Mecanismo de *Web Scraping* dinâmico para extração de dados estruturados dos livros. |
-| **python-dotenv** | ![Dotenv](https://img.shields.io/badge/.ENV-Black?style=for-the-badge) | Gerenciamento seguro de variáveis de ambiente e proteção das chaves de API. |
-| **TextBlob & LangDetect** | ![IA](https://img.shields.io/badge/AI--Sentiment-8A2BE2?style=for-the-badge) | Detecção automática do idioma do usuário e classificação do sentimento (Humor do cliente). |
