@@ -1,94 +1,143 @@
-import re
-import nltk
-import wikipediaapi
+import os
+import json
+import numpy as np
+import spacy
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from nltk.stem import PorterStemmer 
+from nltk.corpus import stopwords
+import nltk
+
+nltk.download("stopwords", quiet=True)
+STOPWORDS_PT = set(stopwords.words("portuguese"))
+
+KB_FILE = os.path.join(os.path.dirname(__file__), "..", "knowledge_base_pt.json")
 
 
-nltk.download('punkt_tab', quiet=True)
-nltk.download('punkt', quiet=True)
+class NLPEngine:
+    def __init__(self):
+        self.nlp_pt = spacy.load("pt_core_news_lg")
+        self.kb_pt = self._load_knowledge_base()
+        self.all_blocks: list[dict] = []
+        for intent_blocks in self.kb_pt.values():
+            self.all_blocks.extend(intent_blocks)
 
+        if not self.all_blocks:
+            print(
+                "⚠️  [NLPEngine] knowledge_base_pt.json está vazio ou não existe.\n"
+                "    Rode: python src/build_knowledge_base.py"
+            )
 
-stemmer = PorterStemmer()
+    def _load_knowledge_base(self) -> dict:
+        path = os.path.abspath(KB_FILE)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
 
-def dividir_sentencas(texto):
-    
-  
-    texto = re.sub(r'\[.*?\]', '', texto)
-    frases = re.split(r'\.\s+', texto)
-    return [f.strip() for f in frases if len(f.strip()) > 20]
+    def preprocessing(self, sentence: str) -> str:
+        doc = self.nlp_pt(sentence.lower())
+        entity_texts = {ent.start: ent.text.lower() for ent in doc.ents}
+        tokens = []
+        for token in doc:
+            if token.i in entity_texts:
+                tokens.append(entity_texts[token.i])
+            elif (
+                not token.is_punct
+                and not token.is_space
+                and not token.like_num
+                and len(token.text) > 1
+                and not token.is_stop
+            ):
+                tokens.append(token.lemma_)
+        multi = [ent.text.lower() for ent in doc.ents if len(ent.text.split()) > 1]
+        return " ".join(list(dict.fromkeys(tokens + multi)))
 
+    def detect_intent(self, text: str) -> str:
+        t = text.lower()
+        intents = {
+            "personagens": ["quem é", "quem foi", "personagem", "protagonista", "vilão", "herói"],
+            "habilidades": ["poder", "habilidade", "ataques", "skills", "sistema de magia", "alomancia", "magia", "força"],
+            "historia_lore": ["história", "enredo", "trama", "narrativa", "acontece"],
+            "mundo_universo": ["mundo", "universo", "reino", "onde se passa", "cenário", "planeta"],
+        }
+        for intent, keywords in intents.items():
+            for kw in keywords:
+                if kw in t:
+                    return intent
+        return "personagens"
 
-def buscar_livro_wikipedia(nome_livro):
-  
-    
-    USER_AGENT = "AssistenteLiterarioBot/1.0 (contato@fatec.edu)"
-    
-    
-    wiki_pt = wikipediaapi.Wikipedia(user_agent=USER_AGENT, language="pt")
-    page_pt = wiki_pt.page(nome_livro)
-    
-    if page_pt.exists():
-        print(f"📚 [NLP ENGINE] Livro encontrado em PT: {page_pt.title}")
-        return dividir_sentencas(page_pt.text)
-        
-    
-    print(f"🔍 [NLP ENGINE] '{nome_livro}' não achado em PT. Tentando em EN...")
-    wiki_en = wikipediaapi.Wikipedia(user_agent=USER_AGENT, language="en")
-    page_en = wiki_en.page(nome_livro)
-    
-    if page_en.exists():
-        print(f"📚 [NLP ENGINE] Livro encontrado em EN: {page_en.title}")
-        return dividir_sentencas(page_en.text)
-        
-    
-    print(f"❌ [NLP ENGINE] Livro '{nome_livro}' não foi encontrado na Wikipédia.")
-    return []
+    def answer(self, user_text: str, livro_foco: str = None, threshold: float = 0.15, top_k: int = 2) -> str:
+        if not self.all_blocks:
+            return (
+                "⚠️ Base de conhecimento vazia.\n"
+                "Rode `python src/build_knowledge_base.py` e reinicie o bot."
+            )
 
-def preprocessamento(frase):
-   
-    frase = frase.lower().replace('\n', ' ')
-    palavras = nltk.word_tokenize(frase)
-    return " ".join([stemmer.stem(p) for p in palavras])
+        intent = self.detect_intent(user_text)
+        entities = [
+            w.lower()
+            for w in user_text.split()
+            if w.lower() not in STOPWORDS_PT and len(w) > 2
+        ]
 
-def treinar_base_livro(sentencas_originais):
-   
+        # 1. Prioriza blocos do livro em foco
+        if livro_foco:
+            pool = [b for b in self.all_blocks if b["topic"].lower() == livro_foco.lower()]
+            if not pool:
+                pool = self.all_blocks
+        else:
+            pool = self.all_blocks
 
-    if not sentencas_originais:
-        return None, None
-        
-    tfidf = TfidfVectorizer(ngram_range=(1,2), max_df=0.95, min_df=1)
-    sentencas_tratadas = [preprocessamento(s) for s in sentencas_originais]
-    matriz_tfidf = tfidf.fit_transform(sentencas_tratadas)
-    return tfidf, matriz_tfidf
+        # 2. Filtra por entidades ou intent
+        filtered = [b for b in pool if any(e in b["text"].lower() for e in entities)]
+        if not filtered:
+            filtered = [b for b in pool if b["intent"] == intent]
+        if not filtered:
+            filtered = pool
 
+        sentences_pool = [b["text"] for b in filtered]
+        topics_pool = [b["topic"] for b in filtered]
 
-def calcular_resposta_cosseno(pergunta, sentencas_originais, tfidf, matriz_tfidf, threshold=0.15):
+        # TF-IDF
+        cleaned_pool = [self.preprocessing(s) for s in sentences_pool]
+        user_clean = self.preprocessing(user_text)
+        vectorizer = TfidfVectorizer()
+        all_vectors = vectorizer.fit_transform(cleaned_pool + [user_clean])
+        tfidf_scores = cosine_similarity(all_vectors[-1], all_vectors[:-1])[0]
 
-    if not matriz_tfidf:
-        return None
+        # Similaridade semântica spaCy
+        user_doc = self.nlp_pt(user_text)
+        spacy_scores = np.array([
+            user_doc.similarity(self.nlp_pt(s)) if user_doc.vector_norm else 0.0
+            for s in sentences_pool
+        ])
 
-   
-    pergunta_tratada = preprocessamento(pergunta)
-    pergunta_vetor = tfidf.transform([pergunta_tratada])
-    
-   
-    similaridade = cosine_similarity(pergunta_vetor, matriz_tfidf)
-    scores = similaridade.flatten()
-    
-    
-    indice_max = scores.argsort()[-1]
-    
-    
-    if scores[indice_max] < threshold:
-        return None
-        
-    resposta = sentencas_originais[indice_max]
-    
-    if indice_max > 0:
-        resposta = sentencas_originais[indice_max - 1] + " " + resposta
-    if indice_max < len(sentencas_originais) - 1:
-        resposta = resposta + " " + sentencas_originais[indice_max + 1]
-        
-    return resposta
+        combined = 0.7 * tfidf_scores + 0.3 * spacy_scores
+
+        # Boost para blocos com entidades da pergunta
+        for i, s in enumerate(sentences_pool):
+            if any(e in s.lower() for e in entities):
+                combined[i] *= 2.0
+
+        sorted_idx = combined.argsort()[::-1]
+
+        if combined[sorted_idx[0]] < threshold:
+            return "🤔 Não encontrei uma resposta focada sobre isso nos registros das obras."
+
+        # Retorna top_k blocos sem repetir o mesmo texto
+        respostas = []
+        vistos = set()
+        for idx in sorted_idx:
+            if combined[idx] < threshold:
+                break
+            texto = sentences_pool[idx]
+            # Evita blocos muito parecidos (primeiros 60 chars iguais)
+            chave = texto[:60]
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            respostas.append(f"📌 *[{topics_pool[idx]}]*\n{texto}")
+            if len(respostas) >= top_k:
+                break
+
+        return "\n\n".join(respostas)

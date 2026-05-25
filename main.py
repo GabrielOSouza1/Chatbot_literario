@@ -1,30 +1,21 @@
-import logging
 import os
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
+from dotenv import load_dotenv
+from src.bot_telegram import start, handle_message, listar_ou_definir_livro
 
-# Configura o log no terminal para ver se há erros
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-
-
-TOKEN_TELEGRAM = os.getenv("TOKEN_TELEGRAM")
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /start básico de boas-vindas"""
-    await update.message.reply_text("👋 Olá! O esqueleto do Bot Literário está online e funcionando!")
+load_dotenv()
+TOKEN = os.getenv("TOKEN_TELEGRAM")
 
 def main():
-    
-    app = Application.builder().token(TOKEN_TELEGRAM).build()
-    
-    
+    print("Ligando os motores do Assistente Literário...")
+    app = ApplicationBuilder().token(TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
-    
-    print("Bot iniciado! Vá no Telegram e digite /start")
+    app.add_handler(CommandHandler("livro", listar_ou_definir_livro))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    print("Bot online e rodando!")
     app.run_polling()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
