@@ -1,0 +1,13 @@
+[
+  {
+    "livro": "amo brancas",
+    "total_paginas": 600,
+    "paginas_lidas_sessao": 9,
+    "porcentagem_lida": 1.5,
+    "tempo_minutos": 4.2,
+    "tempo_restante_estimado_min": 275.8,
+    "data": "26/05/2026 20:33",
+    "comentario": "muito bom",
+    "sentimento": "neutro"
+  }
+]

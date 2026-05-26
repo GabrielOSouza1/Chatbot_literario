@@ -66,7 +66,7 @@ class NLPEngine:
                     return intent
         return "personagens"
 
-    def answer(self, user_text: str, livro_foco: str = None, threshold: float = 0.15, top_k: int = 2) -> str:
+    def answer(self, user_text: str, livro_foco: str = None, sentimento: str = "neutro", threshold: float = 0.15, top_k: int = 2) -> str:
         if not self.all_blocks:
             return (
                 "⚠️ Base de conhecimento vazia.\n"
@@ -80,7 +80,7 @@ class NLPEngine:
             if w.lower() not in STOPWORDS_PT and len(w) > 2
         ]
 
-        # 1. Prioriza blocos do livro em foco
+        # Prioriza blocos do livro em foco
         if livro_foco:
             pool = [b for b in self.all_blocks if b["topic"].lower() == livro_foco.lower()]
             if not pool:
@@ -88,7 +88,7 @@ class NLPEngine:
         else:
             pool = self.all_blocks
 
-        # 2. Filtra por entidades ou intent
+        # Filtra por entidades ou intent
         filtered = [b for b in pool if any(e in b["text"].lower() for e in entities)]
         if not filtered:
             filtered = [b for b in pool if b["intent"] == intent]
@@ -114,7 +114,6 @@ class NLPEngine:
 
         combined = 0.7 * tfidf_scores + 0.3 * spacy_scores
 
-        # Boost para blocos com entidades da pergunta
         for i, s in enumerate(sentences_pool):
             if any(e in s.lower() for e in entities):
                 combined[i] *= 2.0
@@ -122,16 +121,17 @@ class NLPEngine:
         sorted_idx = combined.argsort()[::-1]
 
         if combined[sorted_idx[0]] < threshold:
+            if sentimento == "negativo":
+                return "😔 *Entendo sua frustração!* Mas não encontrei nada sobre isso nos registros das obras."
             return "🤔 Não encontrei uma resposta focada sobre isso nos registros das obras."
 
-        # Retorna top_k blocos sem repetir o mesmo texto
+        # Monta top_k blocos sem repetição
         respostas = []
         vistos = set()
         for idx in sorted_idx:
             if combined[idx] < threshold:
                 break
             texto = sentences_pool[idx]
-            # Evita blocos muito parecidos (primeiros 60 chars iguais)
             chave = texto[:60]
             if chave in vistos:
                 continue
@@ -140,4 +140,8 @@ class NLPEngine:
             if len(respostas) >= top_k:
                 break
 
-        return "\n\n".join(respostas)
+        # Prefixo de sentimento
+        from src.sentiment import prefixo_por_sentimento
+        prefixo = prefixo_por_sentimento(sentimento)
+
+        return prefixo + "\n\n".join(respostas)
