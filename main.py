@@ -1,28 +1,38 @@
 import os
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 from dotenv import load_dotenv
-from src.bot_telegram import start, handle_message, listar_ou_definir_livro, comando_ler, comando_parar, comando_historico
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+from src.bot_telegram import (
+    start,
+    listar_ou_definir_livro,
+    comando_ler,
+    comando_parar,
+    comando_historico,
+    handle_message
+)
 
 load_dotenv()
-TOKEN = os.getenv("TOKEN_TELEGRAM")
 
 def main():
-    print("Ligando os motores do Assistente Literário...")
-    app = ApplicationBuilder().token(TOKEN).build()
+    token = os.getenv("TOKEN_TELEGRAM")
+    if not token:
+        print("Erro: TOKEN_TELEGRAM não encontrado no arquivo .env")
+        return
 
-    # Comandos de Configuração e Menu
+    app = ApplicationBuilder().token(token).build()
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("livro", listar_ou_definir_livro))
-    
-    # Comandos do Monitor de Leitura
+    app.add_handler(CommandHandler("book", listar_ou_definir_livro))
     app.add_handler(CommandHandler("ler", comando_ler))
+    app.add_handler(CommandHandler("read", comando_ler))
     app.add_handler(CommandHandler("parar", comando_parar))
+    app.add_handler(CommandHandler("stop", comando_parar))
     app.add_handler(CommandHandler("historico", comando_historico))
-    
-    # Tratamento de textos de mensagens
+    app.add_handler(CommandHandler("history", comando_historico))
+
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("Bot online e rodando!")
+    print("🤖 Bot online e operando em modo híbrido bilíngue...")
     app.run_polling()
 
 if __name__ == "__main__":
